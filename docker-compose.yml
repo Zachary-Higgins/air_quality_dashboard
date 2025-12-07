@@ -1,0 +1,63 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: aqi_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: aqi_telemetry
+      MYSQL_USER: aqi_user
+      MYSQL_PASSWORD: aqi_password
+    ports:
+      - "3306:3306" # Expose for local debugging
+    volumes:
+      - ./mysql/init:/docker-entrypoint-initdb.d
+      - mysql_data:/var/lib/mysql
+    networks:
+      - aqi_net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: aqi_grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_DEFAULT_THEME=gloom
+    networks:
+      - aqi_net
+    depends_on:
+      - mysql
+
+  worker:
+    build: ./worker
+    container_name: aqi_worker
+    volumes:
+      - ./worker:/app # Bind mount for development
+    environment:
+      - DB_HOST=mysql
+      - DB_USER=aqi_user
+      - DB_PASSWORD=aqi_password
+      - DB_NAME=aqi_telemetry
+      - AIRTHINGS_CLIENT_ID=${AIRTHINGS_CLIENT_ID}
+      - AIRTHINGS_CLIENT_SECRET=${AIRTHINGS_CLIENT_SECRET}
+      - WEATHER_ZIP_CODE=${WEATHER_ZIP_CODE}
+    networks:
+      - aqi_net
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  mysql_data:
+  grafana_data:
+
+networks:
+  aqi_net:
+    driver: bridge

@@ -1,0 +1,16 @@
+apiVersion: 1
+
+datasources:
+  - name: AQI_DB
+    type: mysql
+    url: mysql:3306
+    database: aqi_telemetry
+    user: aqi_user
+    secureJsonData:
+      password: aqi_password
+    jsonData:
+      maxOpenConns: 0 # unlimited
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+    isDefault: true
+    editable: true
